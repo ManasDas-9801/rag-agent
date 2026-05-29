@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Logo } from "@/components/brand/logo";
 import { apiUrl, setTokens } from "@/lib/session";
 
 export default function SignupPage() {
@@ -33,51 +34,63 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="text-2xl font-semibold">Create your account</h1>
-        <p className="mt-2 text-sm text-slate-600">Start a workspace in minutes.</p>
-        <form className="mt-6 space-y-4" onSubmit={onSubmit}>
-          <div>
-            <label className="text-sm font-medium text-slate-700">Email</label>
-            <input
-              className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none ring-slate-900 focus:ring-2"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-slate-700">Password</label>
-            <input
-              className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none ring-slate-900 focus:ring-2"
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              minLength={8}
-              required
-            />
-            <p className="mt-1 text-xs text-slate-500">At least 8 characters.</p>
-          </div>
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
-          <button
-            className="w-full rounded-md bg-slate-900 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
-            type="submit"
-            disabled={loading}
-          >
-            {loading ? "Creating…" : "Create account"}
-          </button>
-        </form>
-        <p className="mt-6 text-center text-sm text-slate-600">
-          Already have an account?{" "}
-          <Link className="font-medium text-slate-900 underline" href="/login">
-            Log in
-          </Link>
-        </p>
+    <div className="flex min-h-screen">
+      <div className="hidden flex-1 flex-col justify-between bg-gradient-to-br from-violet-600 via-indigo-600 to-indigo-800 p-12 text-white lg:flex">
+        <Logo href="/" className="[&_span:last-child]:bg-none [&_span:last-child]:text-white" />
+        <div>
+          <h2 className="text-3xl font-bold leading-tight">Ship site chat in minutes</h2>
+          <p className="mt-4 max-w-md text-indigo-100">
+            Upload your content, embed one script, and give visitors answers grounded in your docs.
+          </p>
+        </div>
+        <p className="text-sm text-indigo-200">© RAG Agent Platform</p>
       </div>
-    </main>
+
+      <main className="flex flex-1 flex-col justify-center px-6 py-12">
+        <div className="mx-auto w-full max-w-md lg:hidden">
+          <Logo href="/" />
+        </div>
+        <div className="card-glass mx-auto mt-8 w-full max-w-md p-8 lg:mt-0">
+          <h1 className="text-2xl font-bold text-slate-900">Create account</h1>
+          <p className="mt-2 text-sm text-slate-600">Start your first workspace today.</p>
+          <form className="mt-8 space-y-5" onSubmit={onSubmit}>
+            <div>
+              <label className="text-sm font-medium text-slate-700">Email</label>
+              <input
+                className="input-field mt-1.5"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700">Password</label>
+              <input
+                className="input-field mt-1.5"
+                type="password"
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                minLength={8}
+                required
+              />
+              <p className="mt-1.5 text-xs text-slate-500">At least 8 characters.</p>
+            </div>
+            {error ? <p className="text-sm text-red-600">{error}</p> : null}
+            <button className="btn-primary w-full py-3" type="submit" disabled={loading}>
+              {loading ? "Creating…" : "Create account"}
+            </button>
+          </form>
+          <p className="mt-8 text-center text-sm text-slate-600">
+            Already have an account?{" "}
+            <Link className="font-semibold text-indigo-600 hover:text-indigo-700" href="/login">
+              Log in
+            </Link>
+          </p>
+        </div>
+      </main>
+    </div>
   );
 }

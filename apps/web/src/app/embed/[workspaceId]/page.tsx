@@ -2,6 +2,7 @@
 
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Bot, Check, Copy, MessageSquare, RotateCcw, Send, User } from "lucide-react";
 import {
   fetchEmbedMessages,
   getOrCreateVisitorId,
@@ -10,6 +11,7 @@ import {
   streamEmbedChatSse,
   type EmbedMessage,
 } from "@/lib/embed";
+import { cn } from "@/lib/utils";
 
 type ChatEvent =
   | { type: "token"; value: string }
@@ -21,15 +23,18 @@ type UiMessage = EmbedMessage & { localOnly?: boolean };
 
 function TypingLoader() {
   return (
-    <div className="flex justify-start">
+    <div className="flex justify-start gap-2">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white">
+        <Bot className="h-4 w-4" />
+      </div>
       <div
-        className="flex items-center gap-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
-        aria-label="Assistant is typing"
+        className="flex items-center gap-1.5 rounded-2xl rounded-tl-md border border-slate-200/80 bg-white px-4 py-3 shadow-sm"
         role="status"
+        aria-label="Assistant is typing"
       >
-        <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:0ms]" />
-        <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:150ms]" />
-        <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:300ms]" />
+        <span className="h-2 w-2 animate-bounce rounded-full bg-indigo-400 [animation-delay:0ms]" />
+        <span className="h-2 w-2 animate-bounce rounded-full bg-indigo-400 [animation-delay:150ms]" />
+        <span className="h-2 w-2 animate-bounce rounded-full bg-indigo-400 [animation-delay:300ms]" />
       </div>
     </div>
   );
@@ -50,10 +55,11 @@ function CopyButton({ text }: { text: string }) {
 
   return (
     <button
-      className="mt-1 text-xs font-medium text-slate-500 hover:text-slate-800"
+      className="mt-2 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
       type="button"
       onClick={() => void copy()}
     >
+      {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
       {copied ? "Copied" : "Copy"}
     </button>
   );
@@ -111,7 +117,7 @@ function EmbedChatInner() {
         });
         if (!cancelled) setMessages(rows);
       } catch {
-        /* keep empty history on load failure */
+        /* ignore */
       } finally {
         if (!cancelled) setLoadingHistory(false);
       }
@@ -129,13 +135,10 @@ function EmbedChatInner() {
   async function send() {
     if (!message.trim() || !embedKey || !visitorId) return;
     const userText = message.trim();
-    const userMsg: UiMessage = {
-      id: `local-user-${Date.now()}`,
-      role: "user",
-      content: userText,
-      localOnly: true,
-    };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages((prev) => [
+      ...prev,
+      { id: `local-user-${Date.now()}`, role: "user", content: userText, localOnly: true },
+    ]);
     setMessage("");
     setBusy(true);
     setStreaming("");
@@ -206,7 +209,7 @@ function EmbedChatInner() {
 
   if (!embedKey) {
     return (
-      <main className="flex h-full items-center justify-center p-4 text-sm text-slate-600">
+      <main className="flex h-full min-h-[100dvh] items-center justify-center bg-slate-100 p-4 text-sm text-slate-600">
         Missing embed key.
       </main>
     );
@@ -216,40 +219,73 @@ function EmbedChatInner() {
     !loadingHistory && messages.length === 0 && !streaming && !busy;
 
   return (
-    <main className="flex h-full min-h-[100dvh] flex-col bg-white">
-      <header className="flex items-start justify-between gap-2 border-b border-slate-200 px-4 py-3">
-        <div>
-          <h1 className="text-sm font-semibold text-slate-900">Chat</h1>
-          <p className="text-xs text-slate-500">Answers from this site&apos;s knowledge base.</p>
+    <main className="flex h-full min-h-[100dvh] flex-col bg-gradient-to-b from-slate-100 to-slate-50">
+      <header className="shrink-0 bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-4 text-white shadow-lg">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur">
+              <MessageSquare className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="text-sm font-semibold">Support chat</h1>
+              <p className="text-xs text-indigo-100">Powered by your site knowledge</p>
+            </div>
+          </div>
+          {(messages.length > 0 || conversationId) && (
+            <button
+              className="inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1.5 text-xs font-medium backdrop-blur transition hover:bg-white/25"
+              type="button"
+              onClick={startNewChat}
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              New chat
+            </button>
+          )}
         </div>
-        {messages.length > 0 || conversationId ? (
-          <button
-            className="shrink-0 text-xs font-medium text-slate-600 hover:text-slate-900"
-            type="button"
-            onClick={startNewChat}
-          >
-            New chat
-          </button>
-        ) : null}
       </header>
 
-      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-4">
+      <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-4 py-5">
         {loadingHistory ? (
-          <p className="text-sm text-slate-500">Loading history…</p>
+          <div className="flex justify-center py-12">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+          </div>
         ) : showEmpty ? (
-          <p className="text-sm text-slate-500">Ask a question about this website…</p>
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-md">
+              <Bot className="h-7 w-7 text-indigo-500" />
+            </div>
+            <p className="mt-4 font-medium text-slate-800">How can we help?</p>
+            <p className="mt-1 max-w-xs text-sm text-slate-500">
+              Ask anything about this website. Answers come from uploaded documents only.
+            </p>
+          </div>
         ) : (
           messages.map((m) => (
             <div
               key={m.id}
-              className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+              className={cn("flex gap-2", m.role === "user" ? "flex-row-reverse" : "flex-row")}
             >
               <div
-                className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
+                className={cn(
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
                   m.role === "user"
-                    ? "bg-slate-900 text-white"
-                    : "border border-slate-200 bg-slate-50 text-slate-800"
-                }`}
+                    ? "bg-slate-800 text-white"
+                    : "bg-gradient-to-br from-indigo-500 to-violet-500 text-white",
+                )}
+              >
+                {m.role === "user" ? (
+                  <User className="h-4 w-4" />
+                ) : (
+                  <Bot className="h-4 w-4" />
+                )}
+              </div>
+              <div
+                className={cn(
+                  "max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm",
+                  m.role === "user"
+                    ? "rounded-tr-md bg-slate-800 text-white"
+                    : "rounded-tl-md border border-slate-200/80 bg-white text-slate-800",
+                )}
               >
                 <p className="whitespace-pre-wrap">{m.content}</p>
                 {m.role === "assistant" ? <CopyButton text={m.content} /> : null}
@@ -259,26 +295,23 @@ function EmbedChatInner() {
         )}
         {busy && !streaming ? <TypingLoader /> : null}
         {streaming ? (
-          <div className="flex justify-start">
-            <div className="max-w-[85%] rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm leading-relaxed text-slate-800">
+          <div className="flex gap-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white">
+              <Bot className="h-4 w-4" />
+            </div>
+            <div className="max-w-[78%] rounded-2xl rounded-tl-md border border-slate-200/80 bg-white px-4 py-2.5 text-sm leading-relaxed text-slate-800 shadow-sm">
               <p className="whitespace-pre-wrap">{streaming}</p>
-              {busy ? (
-                <span className="mt-2 inline-flex items-center gap-0.5 text-slate-400" aria-hidden>
-                  <span className="animate-pulse">.</span>
-                  <span className="animate-pulse [animation-delay:200ms]">.</span>
-                  <span className="animate-pulse [animation-delay:400ms]">.</span>
-                </span>
-              ) : null}
             </div>
           </div>
         ) : null}
       </div>
 
-      <div className="border-t border-slate-200 p-3">
-        <div className="flex gap-2">
-          <input
-            className="min-w-0 flex-1 rounded-md border border-slate-200 px-3 py-2 text-sm outline-none ring-slate-900 focus:ring-2"
+      <div className="shrink-0 border-t border-slate-200/80 bg-white p-4 shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
+        <div className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-500/20">
+          <textarea
+            className="max-h-28 min-h-[44px] flex-1 resize-none bg-transparent px-2 py-2.5 text-sm outline-none placeholder:text-slate-400"
             placeholder="Type your message…"
+            rows={1}
             value={message}
             disabled={busy}
             onChange={(e) => setMessage(e.target.value)}
@@ -290,12 +323,13 @@ function EmbedChatInner() {
             }}
           />
           <button
-            className="shrink-0 rounded-md bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+            className="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md transition hover:from-indigo-500 hover:to-violet-500 disabled:opacity-40"
             type="button"
-            disabled={busy || !visitorId}
+            disabled={busy || !visitorId || !message.trim()}
             onClick={() => void send()}
+            aria-label="Send message"
           >
-            {busy ? "…" : "Send"}
+            <Send className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -307,8 +341,8 @@ export default function EmbedChatPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex h-full min-h-[100dvh] items-center justify-center text-sm text-slate-500">
-          Loading…
+        <main className="flex h-full min-h-[100dvh] items-center justify-center bg-slate-100">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
         </main>
       }
     >

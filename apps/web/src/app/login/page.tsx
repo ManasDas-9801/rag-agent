@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Logo } from "@/components/brand/logo";
 import { apiUrl, setTokens } from "@/lib/session";
 
 export default function LoginPage() {
@@ -32,49 +33,61 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="text-2xl font-semibold">Welcome back</h1>
-        <p className="mt-2 text-sm text-slate-600">Log in to your workspace.</p>
-        <form className="mt-6 space-y-4" onSubmit={onSubmit}>
-          <div>
-            <label className="text-sm font-medium text-slate-700">Email</label>
-            <input
-              className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none ring-slate-900 focus:ring-2"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-slate-700">Password</label>
-            <input
-              className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm outline-none ring-slate-900 focus:ring-2"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
-          <button
-            className="w-full rounded-md bg-slate-900 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
-            type="submit"
-            disabled={loading}
-          >
-            {loading ? "Signing in…" : "Continue"}
-          </button>
-        </form>
-        <p className="mt-6 text-center text-sm text-slate-600">
-          No account?{" "}
-          <Link className="font-medium text-slate-900 underline" href="/signup">
-            Sign up
-          </Link>
-        </p>
+    <div className="flex min-h-screen">
+      <div className="hidden flex-1 flex-col justify-between bg-gradient-to-br from-indigo-600 via-violet-600 to-indigo-800 p-12 text-white lg:flex">
+        <Logo href="/" className="[&_span:last-child]:bg-none [&_span:last-child]:text-white" />
+        <div>
+          <h2 className="text-3xl font-bold leading-tight">Welcome back</h2>
+          <p className="mt-4 max-w-md text-indigo-100">
+            Manage workspaces, upload knowledge, and deploy embeddable chat to any website.
+          </p>
+        </div>
+        <p className="text-sm text-indigo-200">© RAG Agent Platform</p>
       </div>
-    </main>
+
+      <main className="flex flex-1 flex-col justify-center px-6 py-12">
+        <div className="mx-auto w-full max-w-md lg:hidden">
+          <Logo href="/" />
+        </div>
+        <div className="card-glass mx-auto mt-8 w-full max-w-md p-8 lg:mt-0">
+          <h1 className="text-2xl font-bold text-slate-900">Log in</h1>
+          <p className="mt-2 text-sm text-slate-600">Access your admin dashboard.</p>
+          <form className="mt-8 space-y-5" onSubmit={onSubmit}>
+            <div>
+              <label className="text-sm font-medium text-slate-700">Email</label>
+              <input
+                className="input-field mt-1.5"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700">Password</label>
+              <input
+                className="input-field mt-1.5"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            {error ? <p className="text-sm text-red-600">{error}</p> : null}
+            <button className="btn-primary w-full py-3" type="submit" disabled={loading}>
+              {loading ? "Signing in…" : "Continue"}
+            </button>
+          </form>
+          <p className="mt-8 text-center text-sm text-slate-600">
+            No account?{" "}
+            <Link className="font-semibold text-indigo-600 hover:text-indigo-700" href="/signup">
+              Sign up free
+            </Link>
+          </p>
+        </div>
+      </main>
+    </div>
   );
 }

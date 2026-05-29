@@ -53,7 +53,7 @@ function buildWidgetScript(cfg: AppConfig, apiBase: string, widgetOrigin: string
   var btn=document.createElement("button");
   btn.type="button";
   btn.setAttribute("aria-label","Open chat");
-  btn.style.cssText="position:fixed;bottom:20px;right:20px;z-index:"+z+";width:56px;height:56px;border-radius:50%;border:none;background:#0f172a;color:#fff;font-size:22px;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.2)";
+  btn.style.cssText="position:fixed;bottom:20px;right:20px;z-index:"+z+";width:56px;height:56px;border-radius:50%;border:none;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 8px 24px rgba(79,70,229,.4)";
   btn.textContent="Chat";
   var panel=document.createElement("div");
   panel.style.cssText="display:none;position:fixed;bottom:88px;right:20px;z-index:"+z+";width:380px;max-width:calc(100vw - 32px);height:520px;max-height:calc(100vh - 120px);border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.18);background:#fff";

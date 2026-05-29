@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { apiFetch, clearTokens, getAccessToken } from "@/lib/session";
+import { ArrowRight, FolderOpen, Plus } from "lucide-react";
+import { AppShell } from "@/components/app/app-shell";
+import { apiFetch, getAccessToken } from "@/lib/session";
 
 type Workspace = {
   id: string;
@@ -17,6 +19,7 @@ export default function DashboardPage() {
   const [items, setItems] = useState<Workspace[] | null>(null);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     if (!getAccessToken()) {
@@ -35,11 +38,13 @@ export default function DashboardPage() {
 
   async function createWorkspace(e: React.FormEvent) {
     e.preventDefault();
+    setCreating(true);
     setError(null);
     const res = await apiFetch("/v1/workspaces", {
       method: "POST",
       body: JSON.stringify({ name }),
     });
+    setCreating(false);
     if (!res.ok) {
       setError("Could not create workspace");
       return;
@@ -49,77 +54,88 @@ export default function DashboardPage() {
     setItems((prev) => (prev ? [ws, ...prev] : [ws]));
   }
 
-  function logout() {
-    clearTokens();
-    router.replace("/login");
-  }
-
   if (!items) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-6">
-        <p className="text-sm text-slate-600">Loading workspaces…</p>
-      </main>
+      <AppShell title="Your workspaces" subtitle="Loading…">
+        <div className="flex justify-center py-20">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+        </div>
+      </AppShell>
     );
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-6 py-10">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Workspaces</h1>
-          <p className="text-sm text-slate-600">Upload documents and open a chat thread.</p>
+    <AppShell
+      title="Your workspaces"
+      subtitle="Each workspace is a separate knowledge base and embed widget for one website or customer."
+    >
+      <div className="mb-8 grid gap-4 sm:grid-cols-3">
+        <div className="card-glass p-5">
+          <p className="text-sm font-medium text-slate-500">Workspaces</p>
+          <p className="mt-1 text-3xl font-bold text-slate-900">{items.length}</p>
         </div>
-        <button
-          className="text-sm font-medium text-slate-600 hover:text-slate-900"
-          type="button"
-          onClick={logout}
-        >
-          Log out
-        </button>
-      </header>
+        <div className="card-glass p-5 sm:col-span-2">
+          <p className="text-sm text-slate-600">
+            Upload documents → copy embed script → visitors get grounded answers on your site.
+          </p>
+        </div>
+      </div>
 
-      <form className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm" onSubmit={createWorkspace}>
-        <label className="text-sm font-medium text-slate-700">New workspace</label>
-        <div className="mt-2 flex gap-2">
+      <form className="card-glass mb-8 p-6" onSubmit={createWorkspace}>
+        <div className="flex items-center gap-2">
+          <Plus className="h-5 w-5 text-indigo-600" />
+          <h2 className="text-lg font-semibold text-slate-900">New workspace</h2>
+        </div>
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
           <input
-            className="flex-1 rounded-md border border-slate-200 px-3 py-2 text-sm outline-none ring-slate-900 focus:ring-2"
-            placeholder="Acme Legal"
+            className="input-field flex-1"
+            placeholder="e.g. Acme Support, My Portfolio Site"
             value={name}
             onChange={(e) => setName(e.target.value)}
             minLength={2}
             required
           />
-          <button
-            className="rounded-md bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-800"
-            type="submit"
-          >
-            Create
+          <button className="btn-primary shrink-0" type="submit" disabled={creating}>
+            {creating ? "Creating…" : "Create workspace"}
           </button>
         </div>
-        {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+        {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
       </form>
 
-      <div className="grid gap-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         {items.length === 0 ? (
-          <p className="text-sm text-slate-600">No workspaces yet. Create one above.</p>
+          <div className="card-glass col-span-full flex flex-col items-center py-16 text-center">
+            <FolderOpen className="h-12 w-12 text-slate-300" />
+            <p className="mt-4 font-medium text-slate-800">No workspaces yet</p>
+            <p className="mt-1 text-sm text-slate-500">Create one above to upload docs and get your embed code.</p>
+          </div>
         ) : (
           items.map((ws) => (
             <Link
               key={ws.id}
               href={`/w/${ws.id}`}
-              className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300"
+              className="card-glass group flex flex-col p-6 transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-2xl hover:shadow-indigo-500/10"
             >
-              <div>
-                <p className="font-medium">{ws.name}</p>
-                <p className="text-xs text-slate-500">{ws.slug}</p>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-md">
+                  <FolderOpen className="h-6 w-6" />
+                </div>
+                <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold capitalize text-indigo-700">
+                  {ws.role}
+                </span>
               </div>
-              <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
-                {ws.role}
+              <h3 className="mt-4 text-lg font-semibold text-slate-900 group-hover:text-indigo-700">
+                {ws.name}
+              </h3>
+              <p className="mt-1 truncate text-sm text-slate-500">{ws.slug}</p>
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-indigo-600">
+                Open workspace
+                <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
               </span>
             </Link>
           ))
         )}
       </div>
-    </main>
+    </AppShell>
   );
 }

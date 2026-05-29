@@ -3,7 +3,20 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import {
+  Check,
+  ChevronLeft,
+  Code2,
+  Copy,
+  ExternalLink,
+  FileText,
+  RefreshCw,
+  Trash2,
+  Upload,
+} from "lucide-react";
+import { AppShell } from "@/components/app/app-shell";
 import { apiFetch, getAccessToken } from "@/lib/session";
+import { cn } from "@/lib/utils";
 
 type DocumentRow = {
   id: string;
@@ -20,6 +33,13 @@ type EmbedConfig = {
   snippet: string;
 };
 
+function statusColor(status: DocumentRow["status"]) {
+  if (status === "completed") return "text-emerald-600 bg-emerald-50";
+  if (status === "failed") return "text-red-600 bg-red-50";
+  if (status === "processing") return "text-amber-600 bg-amber-50";
+  return "text-slate-600 bg-slate-100";
+}
+
 export default function WorkspacePage() {
   const params = useParams<{ workspaceId: string }>();
   const router = useRouter();
@@ -32,6 +52,7 @@ export default function WorkspacePage() {
   const [uploadBusy, setUploadBusy] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [rotatingKey, setRotatingKey] = useState(false);
+  const [copied, setCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -139,157 +160,193 @@ export default function WorkspacePage() {
   function copySnippet() {
     if (!embed?.snippet) return;
     void navigator.clipboard.writeText(embed.snippet);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
   }
 
-  return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-6 py-10">
-      <header className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Workspace</p>
-          <h1 className="text-2xl font-semibold">Knowledge base & embed</h1>
-          <p className="text-sm text-slate-600">
-            Upload your site PDF, then paste the script on any website. Each workspace has its own
-            ID and key so answers stay isolated.
-          </p>
-        </div>
-        <Link className="text-sm font-medium text-slate-600 hover:text-slate-900" href="/dashboard">
-          ← Back
-        </Link>
-      </header>
+  const completedCount = documents?.filter((d) => d.status === "completed").length ?? 0;
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <h2 className="text-lg font-semibold">Documents</h2>
-          <div className="flex flex-col items-stretch gap-2 sm:items-end">
-            <label className="text-sm font-medium text-slate-700">
-              <span className="inline-block rounded-md border border-slate-200 px-3 py-1.5 hover:bg-slate-50">
-                Choose file
-              </span>
-              <input
-                ref={fileInputRef}
-                className="hidden"
-                type="file"
-                accept=".pdf,.docx,.txt,.md"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) setPendingFile(f);
-                }}
-              />
-            </label>
-            {pendingFile ? (
-              <div className="flex max-w-full flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 sm:items-end">
-                <p className="truncate text-sm text-slate-800" title={pendingFile.name}>
-                  {pendingFile.name}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                    type="button"
-                    disabled={uploadBusy}
-                    onClick={clearPendingFile}
-                  >
-                    Remove
-                  </button>
-                  <button
-                    className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-                    type="button"
-                    disabled={uploadBusy}
-                    onClick={() => void submitPendingUpload()}
-                  >
-                    {uploadBusy ? "Uploading…" : "Upload"}
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </div>
+  return (
+    <AppShell
+      title="Workspace"
+      subtitle="Upload knowledge, then deploy the chat widget on any website."
+    >
+      <Link
+        href="/dashboard"
+        className="mb-6 inline-flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-indigo-600"
+      >
+        <ChevronLeft className="h-4 w-4" />
+        All workspaces
+      </Link>
+
+      <div className="mb-8 grid gap-4 sm:grid-cols-3">
+        <div className="card-glass p-5">
+          <p className="text-sm text-slate-500">Documents</p>
+          <p className="mt-1 text-2xl font-bold">{documents?.length ?? "—"}</p>
         </div>
-        <div className="mt-4 space-y-2">
-          <p className="text-xs text-slate-500">
-            Status updates every few seconds. Ingestion requires{" "}
-            <code className="rounded bg-slate-100 px-1 py-0.5 text-[11px]">npm run worker</code>.
+        <div className="card-glass p-5">
+          <p className="text-sm text-slate-500">Ready for chat</p>
+          <p className="mt-1 text-2xl font-bold text-emerald-600">{completedCount}</p>
+        </div>
+        <div className="card-glass flex items-center p-5">
+          <p className="text-sm text-slate-600">
+            Run <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs">npm run worker</code>{" "}
+            while ingesting.
           </p>
-          {!documents ? (
-            <p className="text-sm text-slate-600">Loading…</p>
-          ) : documents.length === 0 ? (
-            <p className="text-sm text-slate-600">No documents yet. Upload a PDF to power the widget.</p>
-          ) : (
-            documents.map((d) => (
-              <div
-                key={d.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{d.filename}</p>
-                  <p className="text-xs text-slate-500">
-                    {d.status}
-                    {d.ingestion?.stage ? ` · ${d.ingestion.stage}` : ""}
-                    {d.ingestion?.percent != null ? ` · ${d.ingestion.percent}%` : ""}
-                  </p>
-                </div>
+        </div>
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-2">
+        <section className="card-glass p-6">
+          <div className="flex items-center gap-2">
+            <Upload className="h-5 w-5 text-indigo-600" />
+            <h2 className="text-lg font-semibold">Knowledge base</h2>
+          </div>
+          <p className="mt-2 text-sm text-slate-600">PDF, DOCX, TXT, or Markdown.</p>
+
+          <label className="mt-6 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-indigo-200 bg-indigo-50/50 px-6 py-10 transition hover:border-indigo-400 hover:bg-indigo-50">
+            <Upload className="h-10 w-10 text-indigo-400" />
+            <span className="mt-3 text-sm font-medium text-indigo-700">Choose file to upload</span>
+            <input
+              ref={fileInputRef}
+              className="hidden"
+              type="file"
+              accept=".pdf,.docx,.txt,.md"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) setPendingFile(f);
+              }}
+            />
+          </label>
+
+          {pendingFile ? (
+            <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <FileText className="h-8 w-8 shrink-0 text-indigo-500" />
+                <p className="truncate text-sm font-medium">{pendingFile.name}</p>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <button className="btn-secondary px-3 py-1.5 text-xs" type="button" onClick={clearPendingFile}>
+                  Remove
+                </button>
                 <button
-                  className="shrink-0 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+                  className="btn-primary px-3 py-1.5 text-xs"
                   type="button"
-                  disabled={deletingId === d.id}
-                  onClick={() => void removeDocument(d.id, d.filename)}
+                  disabled={uploadBusy}
+                  onClick={() => void submitPendingUpload()}
                 >
-                  {deletingId === d.id ? "…" : "Remove"}
+                  {uploadBusy ? "Uploading…" : "Upload"}
                 </button>
               </div>
-            ))
-          )}
-        </div>
-      </section>
+            </div>
+          ) : null}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold">Embed on your website</h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Like Zendesk: paste this before <code className="text-xs">&lt;/body&gt;</code> on any HTML
-          page. Visitors get a chat bubble; answers come only from this workspace&apos;s documents.
-        </p>
-        {embedError ? <p className="mt-2 text-sm text-red-600">{embedError}</p> : null}
-        {embed ? (
-          <div className="mt-4 space-y-3">
-            <div className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs text-slate-600">
-              <p>
-                <span className="font-medium text-slate-800">Workspace ID:</span> {embed.workspaceId}
+          <div className="mt-6 space-y-2">
+            {!documents ? (
+              <p className="text-sm text-slate-500">Loading documents…</p>
+            ) : documents.length === 0 ? (
+              <p className="rounded-xl bg-slate-50 py-8 text-center text-sm text-slate-500">
+                No documents yet. Upload a file to power the widget.
               </p>
-              <p className="mt-1 break-all">
-                <span className="font-medium text-slate-800">Embed key:</span> {embed.embedKey}
-              </p>
-            </div>
-            <pre className="overflow-x-auto rounded-lg border border-slate-200 bg-slate-900 p-4 text-xs text-slate-100">
-              {embed.snippet}
-            </pre>
-            <div className="flex flex-wrap gap-2">
-              <button
-                className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-                type="button"
-                onClick={copySnippet}
-              >
-                Copy snippet
-              </button>
-              <button
-                className="rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                type="button"
-                disabled={rotatingKey}
-                onClick={() => void rotateEmbedKey()}
-              >
-                {rotatingKey ? "Rotating…" : "Rotate key"}
-              </button>
-              <a
-                className="rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                href={`/embed/${embed.workspaceId}?key=${encodeURIComponent(embed.embedKey)}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Preview widget
-              </a>
-            </div>
+            ) : (
+              documents.map((d) => (
+                <div
+                  key={d.id}
+                  className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white p-3 shadow-sm"
+                >
+                  <FileText className="h-8 w-8 shrink-0 text-slate-400" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{d.filename}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-xs font-medium capitalize",
+                          statusColor(d.status),
+                        )}
+                      >
+                        {d.status}
+                      </span>
+                      {d.ingestion?.percent != null ? (
+                        <span className="text-xs text-slate-500">{d.ingestion.percent}%</span>
+                      ) : null}
+                    </div>
+                    {d.status === "processing" && d.ingestion?.percent != null ? (
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all"
+                          style={{ width: `${d.ingestion.percent}%` }}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                  <button
+                    className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                    type="button"
+                    disabled={deletingId === d.id}
+                    onClick={() => void removeDocument(d.id, d.filename)}
+                    aria-label="Remove document"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))
+            )}
           </div>
-        ) : !embedError ? (
-          <p className="mt-3 text-sm text-slate-600">Loading embed code…</p>
-        ) : null}
-      </section>
-    </main>
+        </section>
+
+        <section className="card-glass p-6">
+          <div className="flex items-center gap-2">
+            <Code2 className="h-5 w-5 text-indigo-600" />
+            <h2 className="text-lg font-semibold">Embed widget</h2>
+          </div>
+          <p className="mt-2 text-sm text-slate-600">
+            Paste before <code className="text-xs">&lt;/body&gt;</code> on any site.
+          </p>
+
+          {embedError ? <p className="mt-4 text-sm text-red-600">{embedError}</p> : null}
+
+          {embed ? (
+            <div className="mt-6 space-y-4">
+              <div className="rounded-xl bg-slate-50 p-4 text-xs text-slate-600">
+                <p className="break-all">
+                  <span className="font-semibold text-slate-800">Workspace:</span> {embed.workspaceId}
+                </p>
+              </div>
+              <pre className="overflow-x-auto rounded-xl bg-slate-900 p-4 text-xs leading-relaxed text-indigo-100">
+                {embed.snippet}
+              </pre>
+              <div className="flex flex-wrap gap-2">
+                <button className="btn-primary gap-2" type="button" onClick={copySnippet}>
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {copied ? "Copied" : "Copy snippet"}
+                </button>
+                <button
+                  className="btn-secondary gap-2"
+                  type="button"
+                  disabled={rotatingKey}
+                  onClick={() => void rotateEmbedKey()}
+                >
+                  <RefreshCw className={cn("h-4 w-4", rotatingKey && "animate-spin")} />
+                  Rotate key
+                </button>
+                <a
+                  className="btn-secondary gap-2"
+                  href={`/embed/${embed.workspaceId}?key=${encodeURIComponent(embed.embedKey)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Preview chat
+                </a>
+              </div>
+            </div>
+          ) : !embedError ? (
+            <div className="mt-8 flex justify-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+            </div>
+          ) : null}
+        </section>
+      </div>
+    </AppShell>
   );
 }
