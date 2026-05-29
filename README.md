@@ -60,7 +60,8 @@ npm run test -w @rag/api
 
 ## Architecture
 
-See [AGENTS.md](./AGENTS.md) for module layout, RAG flow, and conventions.
+- **[HOW_IT_WORKS.md](./HOW_IT_WORKS.md)** — product flow, ingestion, RAG chat, embed widget, and data model
+- **[AGENTS.md](./AGENTS.md)** — module layout and conventions for contributors
 
 ## Local dev checklist
 
