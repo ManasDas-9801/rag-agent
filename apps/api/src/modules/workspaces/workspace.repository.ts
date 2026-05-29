@@ -71,9 +71,30 @@ export class WorkspaceRepository {
       id: ws.id,
       name: ws.name,
       slug: ws.slug,
+      allowedDomains: ws.allowedDomains ?? [],
+      widgetSettings: ws.widgetSettings ?? {},
       createdAt: ws.createdAt,
       updatedAt: ws.updatedAt,
     };
+  }
+
+  async updateSettings(
+    workspaceId: string,
+    patch: {
+      allowedDomains?: string[];
+      widgetSettings?: Workspace["widgetSettings"];
+    },
+  ) {
+    const [row] = await this.db
+      .update(workspaces)
+      .set({
+        ...(patch.allowedDomains !== undefined ? { allowedDomains: patch.allowedDomains } : {}),
+        ...(patch.widgetSettings !== undefined ? { widgetSettings: patch.widgetSettings } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(workspaces.id, workspaceId))
+      .returning();
+    return row ?? null;
   }
 
   newEmbedPublicKey() {

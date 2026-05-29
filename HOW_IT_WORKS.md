@@ -2,7 +2,7 @@
 
 This document explains the **RAG Agent Platform** end to end: what runs where, how data flows, and how the embeddable website chat fits in.
 
-For setup commands, see [README.md](./README.md). For module/file layout aimed at contributors, see [AGENTS.md](./AGENTS.md).
+For setup commands, see [README.md](./README.md). For end-user and admin guides, see [docs/USER.md](./docs/USER.md) and [docs/ADMIN.md](./docs/ADMIN.md). For module/file layout aimed at contributors, see [AGENTS.md](./AGENTS.md).
 
 ---
 

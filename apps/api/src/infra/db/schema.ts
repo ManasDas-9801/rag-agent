@@ -46,6 +46,8 @@ export const users = pgTable("users", {
   email: varchar("email", { length: 320 }).notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   role: userRoleEnum("role").notNull().default("user"),
+  /** Subscription plan id: free | pro | business */
+  plan: varchar("plan", { length: 32 }).notNull().default("free"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -73,6 +75,13 @@ export const workspaces = pgTable("workspaces", {
   slug: varchar("slug", { length: 200 }).notNull().unique(),
   /** Public key for embeddable site widgets (scoped to this workspace's documents). */
   embedPublicKey: varchar("embed_public_key", { length: 64 }),
+  /** Hostnames allowed to call embed APIs, e.g. ["example.com", "www.example.com"]. Empty = allow all. */
+  allowedDomains: jsonb("allowed_domains").$type<string[]>().default([]),
+  widgetSettings: jsonb("widget_settings").$type<{
+    title?: string;
+    primaryColor?: string;
+    position?: "left" | "right";
+  }>().default({}),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

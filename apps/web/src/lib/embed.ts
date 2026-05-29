@@ -36,17 +36,45 @@ export type EmbedMessage = {
   createdAt?: string;
 };
 
+export type EmbedWidgetConfig = {
+  workspaceId: string;
+  widgetSettings: {
+    title?: string;
+    primaryColor?: string;
+    position?: "left" | "right";
+  };
+  allowedDomains: string[];
+};
+
+export async function fetchEmbedConfig(params: {
+  workspaceId: string;
+  embedKey: string;
+  parentHost?: string;
+}): Promise<EmbedWidgetConfig> {
+  const q = new URLSearchParams({ embedKey: params.embedKey });
+  if (params.parentHost) q.set("parentHost", params.parentHost);
+  const res = await fetch(
+    `${apiUrl()}/v1/embed/workspaces/${params.workspaceId}/config?${q}`,
+  );
+  if (!res.ok) {
+    throw new Error(`Could not load widget config (${res.status})`);
+  }
+  return (await res.json()) as EmbedWidgetConfig;
+}
+
 export async function fetchEmbedMessages(params: {
   workspaceId: string;
   embedKey: string;
   visitorId: string;
   conversationId: string;
+  parentHost?: string;
 }): Promise<EmbedMessage[]> {
   const q = new URLSearchParams({
     workspaceId: params.workspaceId,
     embedKey: params.embedKey,
     visitorId: params.visitorId,
   });
+  if (params.parentHost) q.set("parentHost", params.parentHost);
   const res = await fetch(
     `${apiUrl()}/v1/embed/conversations/${params.conversationId}/messages?${q}`,
   );
@@ -69,6 +97,7 @@ export async function streamEmbedChatSse(params: {
   visitorId: string;
   message: string;
   conversationId?: string;
+  parentHost?: string;
   onEvent: (evt: EmbedChatEvent) => void;
 }) {
   const url = `${apiUrl()}/v1/embed/chat/stream`;
@@ -78,6 +107,7 @@ export async function streamEmbedChatSse(params: {
     visitorId: params.visitorId,
     message: params.message,
     conversationId: params.conversationId,
+    parentHost: params.parentHost,
   });
   const res = await fetch(url, {
     method: "POST",

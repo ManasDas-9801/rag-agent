@@ -12,6 +12,7 @@
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "db:migrate": "npm run db:migrate -w @rag/api",
+    "admin:promote": "npm run admin:promote -w @rag/api",
     "db:generate": "npm run db:generate -w @rag/api",
     "worker": "npm run worker -w @rag/api"
   },

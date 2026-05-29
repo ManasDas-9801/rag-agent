@@ -100,6 +100,19 @@ export async function registerAuthRoutes(
     },
   );
 
+  app.get(
+    "/v1/auth/me",
+    {
+      onRequest: [app.authenticate],
+      schema: { tags: ["auth"], security: [{ bearerAuth: [] }] },
+    },
+    async (req, reply) => {
+      const user = await deps.users.findById(req.user.sub);
+      if (!user) return reply.unauthorized("User not found");
+      return deps.users.toPublic(user);
+    },
+  );
+
   app.post(
     "/v1/auth/refresh",
     {

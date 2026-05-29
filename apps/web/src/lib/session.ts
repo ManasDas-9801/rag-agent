@@ -1,5 +1,14 @@
 const ACCESS = "rag_access_token";
 const REFRESH = "rag_refresh_token";
+const USER = "rag_user";
+
+export type SessionUser = {
+  id: string;
+  email: string;
+  role: "user" | "admin";
+  plan: string;
+  createdAt?: string;
+};
 
 export function setTokens(access: string, refresh: string) {
   if (typeof window === "undefined") return;
@@ -7,10 +16,27 @@ export function setTokens(access: string, refresh: string) {
   localStorage.setItem(REFRESH, refresh);
 }
 
+export function setSessionUser(user: SessionUser) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(USER, JSON.stringify(user));
+}
+
+export function getSessionUser(): SessionUser | null {
+  if (typeof window === "undefined") return null;
+  const raw = localStorage.getItem(USER);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as SessionUser;
+  } catch {
+    return null;
+  }
+}
+
 export function clearTokens() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(ACCESS);
   localStorage.removeItem(REFRESH);
+  localStorage.removeItem(USER);
 }
 
 export function getAccessToken() {
@@ -59,9 +85,22 @@ export async function refreshAccessToken() {
     clearTokens();
     return false;
   }
-  const data = (await res.json()) as { accessToken: string; refreshToken: string };
+  const data = (await res.json()) as {
+    accessToken: string;
+    refreshToken: string;
+    user?: SessionUser;
+  };
   setTokens(data.accessToken, data.refreshToken);
+  if (data.user) setSessionUser(data.user);
   return true;
+}
+
+export async function fetchCurrentUser(): Promise<SessionUser | null> {
+  const res = await apiFetch("/v1/auth/me");
+  if (!res.ok) return null;
+  const user = (await res.json()) as SessionUser;
+  setSessionUser(user);
+  return user;
 }
 
 export async function streamChatSse(params: {

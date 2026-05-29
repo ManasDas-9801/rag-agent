@@ -19,6 +19,7 @@ import { DocumentService } from "../modules/documents/document.service.js";
 import { Embedder } from "../modules/ingestion/embedder.js";
 import { RetrievalService } from "../modules/retrieval/retrieval.service.js";
 import { ChatService } from "../modules/chat/chat.service.js";
+import { UsageService } from "../modules/billing/usage.service.js";
 import { UsageRepository } from "../modules/usage/usage.repository.js";
 import { authJwtPlugin } from "./plugins/jwt.js";
 import { registerAuthRoutes } from "./routes/v1/auth.routes.js";
@@ -26,6 +27,9 @@ import { registerWorkspaceRoutes } from "./routes/v1/workspace.routes.js";
 import { registerDocumentRoutes } from "./routes/v1/document.routes.js";
 import { registerChatRoutes } from "./routes/v1/chat.routes.js";
 import { registerEmbedRoutes } from "./routes/v1/embed.routes.js";
+import { AdminService } from "../modules/admin/admin.service.js";
+import { AdminDbService } from "../modules/admin/admin-db.service.js";
+import { registerAdminRoutes } from "./routes/v1/admin.routes.js";
 
 export type AppContext = {
   config: AppConfig;
@@ -104,17 +108,18 @@ export async function buildApp(cfg: AppConfig): Promise<BuiltApp> {
   const refreshTokens = new RefreshTokenRepository(db);
   const authService = new AuthService(cfg, users, refreshTokens);
   const workspaces = new WorkspaceRepository(db);
-  const workspaceService = new WorkspaceService(workspaces);
+  const usageBilling = new UsageService(db);
+  const workspaceService = new WorkspaceService(workspaces, usageBilling);
   const documents = new DocumentRepository(db);
   const conversations = new ConversationRepository(db);
-  const documentService = new DocumentService(cfg, documents, ingestionQueue);
+  const documentService = new DocumentService(cfg, documents, ingestionQueue, usageBilling);
   const embedder = new Embedder(cfg);
   const retrieval = new RetrievalService(documents, embedder);
   const usage = new UsageRepository(db);
   const chat = new ChatService(cfg, conversations, retrieval, usage);
 
   await registerAuthRoutes(app, { authService, users });
-  await registerWorkspaceRoutes(app, { workspaces, workspaceService });
+  await registerWorkspaceRoutes(app, { workspaces, workspaceService, usage: usageBilling });
   await registerDocumentRoutes(app, {
     workspaceService,
     documents,
@@ -128,7 +133,12 @@ export async function buildApp(cfg: AppConfig): Promise<BuiltApp> {
     workspaces,
     conversations,
     chat,
+    usage: usageBilling,
   });
+
+  const adminService = new AdminService(db, users);
+  const adminDb = new AdminDbService(db);
+  await registerAdminRoutes(app, { admin: adminService, adminDb, users });
 
   app.get(
     "/health",

@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { replyIfLimitError } from "../../limit-errors.js";
 import type { DocumentRepository } from "../../../modules/documents/document.repository.js";
 import type { DocumentService } from "../../../modules/documents/document.service.js";
 import type { WorkspaceService } from "../../../modules/workspaces/workspace.service.js";
@@ -46,13 +47,55 @@ export async function registerDocumentRoutes(
       const mp = await req.file();
       if (!mp) return reply.badRequest("file field is required");
       const buf = await mp.toBuffer();
-      const documentId = await deps.documentService.saveUpload({
-        workspaceId,
-        filename: mp.filename,
-        buffer: buf,
-        declaredMime: mp.mimetype,
-      });
-      return { documentId, status: "pending" };
+      try {
+        const documentId = await deps.documentService.saveUpload({
+          workspaceId,
+          filename: mp.filename,
+          buffer: buf,
+          declaredMime: mp.mimetype,
+        });
+        return { documentId, status: "pending" };
+      } catch (e) {
+        if (replyIfLimitError(reply, e)) return;
+        throw e;
+      }
+    },
+  );
+
+  app.post(
+    "/v1/workspaces/:workspaceId/documents/:documentId/reingest",
+    {
+      onRequest: [app.authenticate],
+      schema: {
+        tags: ["documents"],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: "object",
+          required: ["workspaceId", "documentId"],
+          properties: {
+            workspaceId: { type: "string", format: "uuid" },
+            documentId: { type: "string", format: "uuid" },
+          },
+        },
+      },
+    },
+    async (req, reply) => {
+      const { workspaceId, documentId } = req.params as {
+        workspaceId: string;
+        documentId: string;
+      };
+      await deps.workspaceService.assertRole(workspaceId, req.user.sub, [
+        "owner",
+        "admin",
+        "member",
+      ]);
+      try {
+        const id = await deps.documentService.reingest(workspaceId, documentId);
+        return { documentId: id, status: "pending" };
+      } catch (e) {
+        if (replyIfLimitError(reply, e)) return;
+        throw e;
+      }
     },
   );
 

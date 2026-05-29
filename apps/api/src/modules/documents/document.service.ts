@@ -3,6 +3,8 @@ import path from "node:path";
 import { lookup } from "mime-types";
 import type { Queue } from "bullmq";
 import type { AppConfig } from "../../config/env.js";
+import { scanUploadBuffer } from "../billing/file-scan.js";
+import type { UsageService } from "../billing/usage.service.js";
 import type { DocumentRepository } from "./document.repository.js";
 
 const ALLOWED_MIME = new Set([
@@ -17,6 +19,7 @@ export class DocumentService {
     private readonly cfg: AppConfig,
     private readonly documents: DocumentRepository,
     private readonly ingestionQueue: Queue<{ documentId: string }>,
+    private readonly usage?: UsageService,
   ) {}
 
   private assertMime(filename: string, declared?: string) {
@@ -30,12 +33,28 @@ export class DocumentService {
     return mime;
   }
 
+  private async enqueueIngest(documentId: string) {
+    await this.ingestionQueue.add(
+      "ingest",
+      { documentId },
+      {
+        attempts: 5,
+        backoff: { type: "exponential", delay: 5000 },
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+    );
+  }
+
   async saveUpload(params: {
     workspaceId: string;
     filename: string;
     buffer: Buffer;
     declaredMime?: string;
   }) {
+    if (this.usage) {
+      await this.usage.assertCanUpload(params.workspaceId, params.buffer.byteLength);
+    }
     const maxBytes = this.cfg.MAX_UPLOAD_MB * 1024 * 1024;
     if (params.buffer.byteLength > maxBytes) {
       const err = new Error("File too large");
@@ -43,6 +62,8 @@ export class DocumentService {
       throw err;
     }
     const mime = this.assertMime(params.filename, params.declaredMime);
+    scanUploadBuffer(params.buffer, mime, params.filename);
+
     const doc = await this.documents.create({
       workspaceId: params.workspaceId,
       filename: params.filename,
@@ -60,18 +81,32 @@ export class DocumentService {
     await this.documents.updateIngestion(doc.id, {
       storagePath,
       ingestion: { stage: "queued", percent: 0 },
+      errorMessage: null,
     });
-    await this.ingestionQueue.add(
-      "ingest",
-      { documentId: doc.id },
-      {
-        attempts: 5,
-        backoff: { type: "exponential", delay: 5000 },
-        removeOnComplete: true,
-        removeOnFail: false,
-      },
-    );
+    await this.enqueueIngest(doc.id);
     return doc.id;
+  }
+
+  async reingest(workspaceId: string, documentId: string) {
+    const doc = await this.documents.findById(documentId);
+    if (!doc || doc.workspaceId !== workspaceId) {
+      const err = new Error("Document not found");
+      (err as NodeJS.ErrnoException).code = "NOT_FOUND";
+      throw err;
+    }
+    if (!doc.storagePath) {
+      const err = new Error("Document file missing");
+      (err as NodeJS.ErrnoException).code = "NOT_FOUND";
+      throw err;
+    }
+    await this.documents.deleteChunksForDocument(documentId);
+    await this.documents.updateIngestion(documentId, {
+      status: "pending",
+      ingestion: { stage: "queued", percent: 0 },
+      errorMessage: null,
+    });
+    await this.enqueueIngest(documentId);
+    return documentId;
   }
 
   /** Removes DB row (cascades chunks) and deletes the stored file when present. */

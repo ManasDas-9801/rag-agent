@@ -1,8 +1,15 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AppConfig } from "../../../config/env.js";
+import { replyIfLimitError } from "../../limit-errors.js";
+import {
+  extractRequestOrigin,
+  isOriginAllowed,
+} from "../../../modules/billing/embed-origin.js";
+import type { UsageService } from "../../../modules/billing/usage.service.js";
 import type { ConversationRepository } from "../../../modules/documents/document.repository.js";
 import type { ChatService } from "../../../modules/chat/chat.service.js";
+import type { Workspace } from "../../../infra/db/schema.js";
 import type { WorkspaceRepository } from "../../../modules/workspaces/workspace.repository.js";
 import type { WorkspaceService } from "../../../modules/workspaces/workspace.service.js";
 
@@ -10,6 +17,7 @@ const embedAuthQuerySchema = z.object({
   workspaceId: z.string().uuid(),
   embedKey: z.string().min(16).max(64),
   visitorId: z.string().min(8).max(128),
+  parentHost: z.string().min(1).max(253).optional(),
 });
 
 const embedStreamSchema = z.object({
@@ -18,7 +26,37 @@ const embedStreamSchema = z.object({
   visitorId: z.string().min(8).max(128),
   message: z.string().min(1).max(8000),
   conversationId: z.string().uuid().optional(),
+  parentHost: z.string().min(1).max(253).optional(),
 });
+
+const embedConfigQuerySchema = z.object({
+  embedKey: z.string().min(16).max(64),
+  parentHost: z.string().min(1).max(253).optional(),
+});
+
+function originDeniedError() {
+  const err = new Error("This site is not allowed to use this embed widget");
+  (err as NodeJS.ErrnoException).code = "ORIGIN_NOT_ALLOWED";
+  return err;
+}
+
+function resolveEmbedHost(
+  req: FastifyRequest,
+  parentHost?: string,
+): string | null {
+  if (parentHost?.trim()) {
+    const h = parentHost.trim().toLowerCase().split(":")[0]!;
+    return h.replace(/^www\./, "");
+  }
+  return extractRequestOrigin(req);
+}
+
+function assertEmbedOrigin(ws: Workspace, req: FastifyRequest, parentHost?: string) {
+  const host = resolveEmbedHost(req, parentHost);
+  if (!isOriginAllowed(ws.allowedDomains, host)) {
+    throw originDeniedError();
+  }
+}
 
 function setPublicEmbedCors(req: FastifyRequest, reply: FastifyReply) {
   const origin = typeof req.headers.origin === "string" ? req.headers.origin : "*";
@@ -47,20 +85,26 @@ function buildWidgetScript(cfg: AppConfig, apiBase: string, widgetOrigin: string
   var ws=s.getAttribute("data-workspace-id");
   var key=s.getAttribute("data-embed-key");
   if(!ws||!key){console.error("[RAG] data-workspace-id and data-embed-key are required");return;}
-  var apiBase=s.getAttribute("data-api-url")||${JSON.stringify(api)};
   var webOrigin=s.getAttribute("data-widget-origin")||${JSON.stringify(web)};
   var z=s.getAttribute("data-z-index")||"99999";
+  var side=s.getAttribute("data-position")||"right";
+  var color=s.getAttribute("data-primary-color")||"#4f46e5";
+  var label=s.getAttribute("data-button-label")||"Chat";
+  var host=location.hostname;
   var btn=document.createElement("button");
   btn.type="button";
   btn.setAttribute("aria-label","Open chat");
-  btn.style.cssText="position:fixed;bottom:20px;right:20px;z-index:"+z+";width:56px;height:56px;border-radius:50%;border:none;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 8px 24px rgba(79,70,229,.4)";
-  btn.textContent="Chat";
+  var bottom="20px";
+  var lr=side==="left"?"left:20px":"right:20px";
+  btn.style.cssText="position:fixed;bottom:"+bottom+";"+lr+";z-index:"+z+";width:56px;height:56px;border-radius:50%;border:none;background:"+color+";color:#fff;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.2)";
+  btn.textContent=label;
   var panel=document.createElement("div");
-  panel.style.cssText="display:none;position:fixed;bottom:88px;right:20px;z-index:"+z+";width:380px;max-width:calc(100vw - 32px);height:520px;max-height:calc(100vh - 120px);border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.18);background:#fff";
+  var panelLr=side==="left"?"left:20px":"right:20px";
+  panel.style.cssText="display:none;position:fixed;bottom:88px;"+panelLr+";z-index:"+z+";width:380px;max-width:calc(100vw - 32px);height:520px;max-height:calc(100vh - 120px);border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.18);background:#fff";
   var iframe=document.createElement("iframe");
   iframe.title="Chat";
   iframe.style.cssText="width:100%;height:100%;border:0";
-  iframe.src=webOrigin+"/embed/"+encodeURIComponent(ws)+"?key="+encodeURIComponent(key);
+  iframe.src=webOrigin+"/embed/"+encodeURIComponent(ws)+"?key="+encodeURIComponent(key)+"&host="+encodeURIComponent(host);
   panel.appendChild(iframe);
   var open=false;
   btn.addEventListener("click",function(){open=!open;panel.style.display=open?"block":"none";});
@@ -77,6 +121,7 @@ export async function registerEmbedRoutes(
     workspaces: WorkspaceRepository;
     conversations: ConversationRepository;
     chat: ChatService;
+    usage: UsageService;
   },
 ) {
   const apiPublic = deps.config.PUBLIC_API_URL.replace(/\/$/, "");
@@ -91,6 +136,34 @@ export async function registerEmbedRoutes(
     setPublicEmbedCors(req, reply);
     return reply.code(204).send();
   });
+
+  app.get(
+    "/v1/embed/workspaces/:workspaceId/config",
+    {
+      config: { rateLimit: { max: 120, timeWindow: 60_000 } },
+    },
+    async (req, reply) => {
+      setPublicEmbedCors(req, reply);
+      const { workspaceId } = req.params as { workspaceId: string };
+      const query = embedConfigQuerySchema.parse(req.query);
+      const ws = await deps.workspaces.findByEmbedAuth(workspaceId, query.embedKey);
+      if (!ws) {
+        return reply.code(401).send({ error: "Invalid workspace or embed key" });
+      }
+      try {
+        assertEmbedOrigin(ws, req, query.parentHost);
+      } catch (e) {
+        if (replyIfLimitError(reply, e)) return;
+        throw e;
+      }
+      const settings = ws.widgetSettings ?? {};
+      return {
+        workspaceId: ws.id,
+        widgetSettings: settings,
+        allowedDomains: ws.allowedDomains ?? [],
+      };
+    },
+  );
 
   app.get(
     "/v1/embed/widget.js",
@@ -115,6 +188,13 @@ export async function registerEmbedRoutes(
       const ws = await deps.workspaces.findByEmbedAuth(body.workspaceId, body.embedKey);
       if (!ws) {
         return reply.code(401).send({ error: "Invalid workspace or embed key" });
+      }
+      try {
+        assertEmbedOrigin(ws, req, body.parentHost);
+        await deps.usage.assertCanEmbedChat(body.workspaceId);
+      } catch (e) {
+        if (replyIfLimitError(reply, e)) return;
+        throw e;
       }
 
       const reqId = (req.id as string) || "req";
@@ -151,6 +231,12 @@ export async function registerEmbedRoutes(
       const ws = await deps.workspaces.findByEmbedAuth(query.workspaceId, query.embedKey);
       if (!ws) {
         return reply.code(401).send({ error: "Invalid workspace or embed key" });
+      }
+      try {
+        assertEmbedOrigin(ws, req, query.parentHost);
+      } catch (e) {
+        if (replyIfLimitError(reply, e)) return;
+        throw e;
       }
       const conv = await deps.conversations.findByIdForEmbed(
         conversationId,
@@ -193,10 +279,17 @@ export async function registerEmbedRoutes(
       if (!ws?.embedPublicKey) {
         throw new Error("Could not provision embed key");
       }
+      const settings = ws.widgetSettings ?? {};
+      const pos = settings.position === "left" ? "left" : "right";
+      const color = settings.primaryColor ?? "#4f46e5";
+      const title = settings.title ?? "Chat";
       const snippet = `<script
   src="${apiPublic}/v1/embed/widget.js"
   data-workspace-id="${ws.id}"
   data-embed-key="${ws.embedPublicKey}"
+  data-primary-color="${color}"
+  data-position="${pos}"
+  data-button-label="${title}"
   async
 ></script>`;
       return {
@@ -204,6 +297,8 @@ export async function registerEmbedRoutes(
         embedKey: ws.embedPublicKey,
         apiUrl: apiPublic,
         widgetOrigin,
+        allowedDomains: ws.allowedDomains ?? [],
+        widgetSettings: settings,
         snippet,
       };
     },

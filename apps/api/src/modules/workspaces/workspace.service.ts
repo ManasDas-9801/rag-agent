@@ -1,9 +1,14 @@
+import type { UsageService } from "../billing/usage.service.js";
 import type { WorkspaceRepository } from "./workspace.repository.js";
 
 export class WorkspaceService {
-  constructor(private readonly workspaces: WorkspaceRepository) {}
+  constructor(
+    private readonly workspaces: WorkspaceRepository,
+    private readonly usage?: UsageService,
+  ) {}
 
   async create(userId: string, name: string) {
+    if (this.usage) await this.usage.assertCanCreateWorkspace(userId);
     for (let i = 0; i < 5; i++) {
       const slug = this.workspaces.slugCandidate(name);
       try {

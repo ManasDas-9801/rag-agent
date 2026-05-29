@@ -15,6 +15,13 @@
       "when": 1736726400000,
       "tag": "0001_embed_widget",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1736812800000,
+      "tag": "0002_saas_plans",
+      "breakpoints": true
     }
   ]
 }

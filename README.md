@@ -58,10 +58,16 @@ The `api` and `worker` images run migrations separately in your release pipeline
 npm run test -w @rag/api
 ```
 
-## Architecture
+## Documentation
 
-- **[HOW_IT_WORKS.md](./HOW_IT_WORKS.md)** — product flow, ingestion, RAG chat, embed widget, and data model
-- **[AGENTS.md](./AGENTS.md)** — module layout and conventions for contributors
+| Doc | Audience |
+|-----|----------|
+| **[docs/USER.md](./docs/USER.md)** | Sign up, workspaces, uploads, plans, embed widget, troubleshooting |
+| **[docs/ADMIN.md](./docs/ADMIN.md)** | Super admin, change plans, database browser, `admin:promote`, SQL |
+| **[HOW_IT_WORKS.md](./HOW_IT_WORKS.md)** | Product flow, ingestion, RAG chat, embed widget, data model |
+| **[AGENTS.md](./AGENTS.md)** | Module layout and conventions for contributors |
+
+**Super admin (quick):** after signup → `npm run admin:promote -- your@email.com` → log in → http://localhost:3000/admin
 
 ## Local dev checklist
 

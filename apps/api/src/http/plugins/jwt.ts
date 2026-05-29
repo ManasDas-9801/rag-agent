@@ -19,6 +19,20 @@ export const authJwtPlugin = fp(
         }
       },
     );
+
+    app.decorate(
+      "requireAdmin",
+      async function requireAdmin(request: FastifyRequest, reply: FastifyReply) {
+        try {
+          await request.jwtVerify();
+        } catch {
+          return reply.unauthorized("Unauthorized");
+        }
+        if (request.user.role !== "admin") {
+          return reply.forbidden("Admin access required");
+        }
+      },
+    );
   },
   { name: "auth-jwt" },
 );

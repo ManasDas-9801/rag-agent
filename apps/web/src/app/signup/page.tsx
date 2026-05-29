@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Logo } from "@/components/brand/logo";
-import { apiUrl, setTokens } from "@/lib/session";
+import { apiUrl, setSessionUser, setTokens, type SessionUser } from "@/lib/session";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -28,8 +28,13 @@ export default function SignupPage() {
       setError((body as { message?: string } | null)?.message ?? "Could not sign up");
       return;
     }
-    const data = (await res.json()) as { accessToken: string; refreshToken: string };
+    const data = (await res.json()) as {
+      accessToken: string;
+      refreshToken: string;
+      user: SessionUser;
+    };
     setTokens(data.accessToken, data.refreshToken);
+    setSessionUser(data.user);
     router.push("/dashboard");
   }
 

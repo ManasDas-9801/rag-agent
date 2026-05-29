@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Logo } from "@/components/brand/logo";
-import { apiUrl, setTokens } from "@/lib/session";
+import { apiUrl, setSessionUser, setTokens, type SessionUser } from "@/lib/session";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,9 +27,14 @@ export default function LoginPage() {
       setError("Invalid credentials");
       return;
     }
-    const data = (await res.json()) as { accessToken: string; refreshToken: string };
+    const data = (await res.json()) as {
+      accessToken: string;
+      refreshToken: string;
+      user: SessionUser;
+    };
     setTokens(data.accessToken, data.refreshToken);
-    router.push("/dashboard");
+    setSessionUser(data.user);
+    router.push(data.user.role === "admin" ? "/admin" : "/dashboard");
   }
 
   return (

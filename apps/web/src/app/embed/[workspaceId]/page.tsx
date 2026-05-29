@@ -4,6 +4,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Bot, Check, Copy, MessageSquare, RotateCcw, Send, User } from "lucide-react";
 import {
+  fetchEmbedConfig,
   fetchEmbedMessages,
   getOrCreateVisitorId,
   getStoredConversationId,
@@ -70,7 +71,12 @@ function EmbedChatInner() {
   const searchParams = useSearchParams();
   const workspaceId = params.workspaceId;
   const embedKey = searchParams.get("key") ?? "";
+  const parentHost =
+    searchParams.get("host") ??
+    (typeof window !== "undefined" ? window.location.hostname : undefined);
 
+  const [widgetTitle, setWidgetTitle] = useState("Support chat");
+  const [primaryColor, setPrimaryColor] = useState("#4f46e5");
   const [visitorId, setVisitorId] = useState("");
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<UiMessage[]>([]);
@@ -97,6 +103,28 @@ function EmbedChatInner() {
   }, [workspaceId]);
 
   useEffect(() => {
+    if (!embedKey) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const cfg = await fetchEmbedConfig({
+          workspaceId,
+          embedKey,
+          parentHost: parentHost ?? undefined,
+        });
+        if (cancelled) return;
+        if (cfg.widgetSettings.title) setWidgetTitle(cfg.widgetSettings.title);
+        if (cfg.widgetSettings.primaryColor) setPrimaryColor(cfg.widgetSettings.primaryColor);
+      } catch {
+        /* use defaults */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [workspaceId, embedKey, parentHost]);
+
+  useEffect(() => {
     if (!embedKey || !visitorId) {
       setLoadingHistory(false);
       return;
@@ -114,6 +142,7 @@ function EmbedChatInner() {
           embedKey,
           visitorId,
           conversationId: conv,
+          parentHost: parentHost ?? undefined,
         });
         if (!cancelled) setMessages(rows);
       } catch {
@@ -125,7 +154,7 @@ function EmbedChatInner() {
     return () => {
       cancelled = true;
     };
-  }, [workspaceId, embedKey, visitorId, conversationId]);
+  }, [workspaceId, embedKey, visitorId, conversationId, parentHost]);
 
   function rememberConversation(id: string) {
     setConversationId(id);
@@ -152,6 +181,7 @@ function EmbedChatInner() {
         visitorId,
         message: userText,
         conversationId,
+        parentHost: parentHost ?? undefined,
         onEvent: (evt) => {
           const e = evt as ChatEvent;
           if (e.type === "conversation") {
@@ -178,6 +208,7 @@ function EmbedChatInner() {
           embedKey,
           visitorId,
           conversationId: activeConv,
+          parentHost: parentHost ?? undefined,
         });
         setMessages(rows);
       }
@@ -220,15 +251,18 @@ function EmbedChatInner() {
 
   return (
     <main className="flex h-full min-h-[100dvh] flex-col bg-gradient-to-b from-slate-100 to-slate-50">
-      <header className="shrink-0 bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-4 text-white shadow-lg">
+      <header
+        className="shrink-0 px-4 py-4 text-white shadow-lg"
+        style={{ background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)` }}
+      >
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur">
               <MessageSquare className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-sm font-semibold">Support chat</h1>
-              <p className="text-xs text-indigo-100">Powered by your site knowledge</p>
+              <h1 className="text-sm font-semibold">{widgetTitle}</h1>
+              <p className="text-xs text-white/80">Powered by your site knowledge</p>
             </div>
           </div>
           {(messages.length > 0 || conversationId) && (
