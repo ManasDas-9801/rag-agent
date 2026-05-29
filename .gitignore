@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+
+# Environment & secrets (keep .env.example committed)
+.env
+.env.*
+!.env.example
+red.txt
+
+# Logs & debug
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test & coverage
+coverage/
+.nyc_output/
+
+# Uploads & local data
+uploads/
+apps/api/uploads/
+
+# Drizzle (generated artifacts; SQL migrations stay tracked)
+.drizzle/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editors & IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Optional local notes (uncomment if you do not want these tracked)
+# red.txt

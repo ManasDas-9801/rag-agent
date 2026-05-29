@@ -1,0 +1,21 @@
+{
+  "name": "rag-agent-platform",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:api": "npm run dev -w @rag/api",
+    "dev:web": "npm run dev -w @rag/web",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "db:migrate": "npm run db:migrate -w @rag/api",
+    "db:generate": "npm run db:generate -w @rag/api",
+    "worker": "npm run worker -w @rag/api"
+  },
+  "engines": {
+    "node": ">=20.10.0"
+  }
+}
