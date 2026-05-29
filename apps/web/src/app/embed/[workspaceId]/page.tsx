@@ -71,9 +71,12 @@ function EmbedChatInner() {
   const searchParams = useSearchParams();
   const workspaceId = params.workspaceId;
   const embedKey = searchParams.get("key") ?? "";
+  const hostFromQuery = searchParams.get("host")?.trim();
   const parentHost =
-    searchParams.get("host") ??
-    (typeof window !== "undefined" ? window.location.hostname : undefined);
+    hostFromQuery ||
+    (typeof window !== "undefined" && window.location.hostname
+      ? window.location.hostname
+      : undefined);
 
   const [widgetTitle, setWidgetTitle] = useState("Support chat");
   const [primaryColor, setPrimaryColor] = useState("#4f46e5");

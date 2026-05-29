@@ -29,6 +29,10 @@ Production-oriented monorepo: **Fastify API** + **BullMQ ingestion worker** + **
 
    API: `http://localhost:4000` · OpenAPI UI: `http://localhost:4000/docs` · Web: `http://localhost:3000`
 
+5. Optional — test embed on a sample page (HTTP, not `file://`):
+
+   `npx --yes serve demo-site -p 8080` → http://localhost:8080
+
 ## Docker (all services)
 
 Ensure `.env` exists with production-like values (JWT secrets, `DATABASE_URL` pointing to the `postgres` service: `postgresql://rag:rag@postgres:5432/rag`, `REDIS_URL=redis://redis:6379`, `CORS_ORIGIN` including your web origin).

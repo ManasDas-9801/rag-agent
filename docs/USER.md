@@ -132,7 +132,21 @@ Example:
 ### Preview
 
 - In dashboard: **Preview chat** (opens `/embed/:workspaceId?key=…`).
-- Or use `demo-site/index.html` (update workspace id and embed key).
+- Or use the sample page in `demo-site/` (update workspace id and embed key in `demo-site/index.html`).
+
+### Demo site (local HTTP)
+
+Do **not** open `demo-site/index.html` as `file://` — the embed needs a real hostname for domain checks.
+
+From the **repo root**:
+
+```bash
+npx --yes serve demo-site -p 8080
+```
+
+Then open **http://localhost:8080** and use the chat button.
+
+If you use a **domain allowlist** on the workspace, add `localhost` under **Widget security & branding**.
 
 ### Visitor history
 

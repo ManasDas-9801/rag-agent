@@ -271,7 +271,7 @@ OpenAPI UI (dev): `http://localhost:4000/docs`
 2. Open `http://localhost:3000` → sign up → create workspace.
 3. Upload a PDF; wait until status is **completed** (worker running).
 4. Copy **embed snippet** from the workspace page.
-5. Paste into `demo-site/index.html` or your site; open via a local server.
+5. Paste into `demo-site/index.html` or your site. For the sample page, from repo root: `npx --yes serve demo-site -p 8080` → http://localhost:8080 (not `file://`).
 6. Click **Chat**, ask a question; answers should cite your document content.
 
 ---

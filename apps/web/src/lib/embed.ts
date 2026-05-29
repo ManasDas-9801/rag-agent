@@ -52,7 +52,8 @@ export async function fetchEmbedConfig(params: {
   parentHost?: string;
 }): Promise<EmbedWidgetConfig> {
   const q = new URLSearchParams({ embedKey: params.embedKey });
-  if (params.parentHost) q.set("parentHost", params.parentHost);
+  const host = params.parentHost?.trim();
+  if (host) q.set("parentHost", host);
   const res = await fetch(
     `${apiUrl()}/v1/embed/workspaces/${params.workspaceId}/config?${q}`,
   );
@@ -74,7 +75,8 @@ export async function fetchEmbedMessages(params: {
     embedKey: params.embedKey,
     visitorId: params.visitorId,
   });
-  if (params.parentHost) q.set("parentHost", params.parentHost);
+  const host = params.parentHost?.trim();
+  if (host) q.set("parentHost", host);
   const res = await fetch(
     `${apiUrl()}/v1/embed/conversations/${params.conversationId}/messages?${q}`,
   );
@@ -101,13 +103,14 @@ export async function streamEmbedChatSse(params: {
   onEvent: (evt: EmbedChatEvent) => void;
 }) {
   const url = `${apiUrl()}/v1/embed/chat/stream`;
+  const host = params.parentHost?.trim();
   const body = JSON.stringify({
     workspaceId: params.workspaceId,
     embedKey: params.embedKey,
     visitorId: params.visitorId,
     message: params.message,
     conversationId: params.conversationId,
-    parentHost: params.parentHost,
+    ...(host ? { parentHost: host } : {}),
   });
   const res = await fetch(url, {
     method: "POST",

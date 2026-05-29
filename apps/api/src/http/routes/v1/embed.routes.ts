@@ -13,11 +13,21 @@ import type { Workspace } from "../../../infra/db/schema.js";
 import type { WorkspaceRepository } from "../../../modules/workspaces/workspace.repository.js";
 import type { WorkspaceService } from "../../../modules/workspaces/workspace.service.js";
 
+/** Empty string from `?host=` or file:// pages → treat as omitted. */
+const optionalParentHost = z
+  .string()
+  .max(253)
+  .optional()
+  .transform((s) => {
+    const t = s?.trim();
+    return t ? t : undefined;
+  });
+
 const embedAuthQuerySchema = z.object({
   workspaceId: z.string().uuid(),
   embedKey: z.string().min(16).max(64),
   visitorId: z.string().min(8).max(128),
-  parentHost: z.string().min(1).max(253).optional(),
+  parentHost: optionalParentHost,
 });
 
 const embedStreamSchema = z.object({
@@ -26,12 +36,12 @@ const embedStreamSchema = z.object({
   visitorId: z.string().min(8).max(128),
   message: z.string().min(1).max(8000),
   conversationId: z.string().uuid().optional(),
-  parentHost: z.string().min(1).max(253).optional(),
+  parentHost: optionalParentHost,
 });
 
 const embedConfigQuerySchema = z.object({
   embedKey: z.string().min(16).max(64),
-  parentHost: z.string().min(1).max(253).optional(),
+  parentHost: optionalParentHost,
 });
 
 function originDeniedError() {
@@ -90,7 +100,8 @@ function buildWidgetScript(cfg: AppConfig, apiBase: string, widgetOrigin: string
   var side=s.getAttribute("data-position")||"right";
   var color=s.getAttribute("data-primary-color")||"#4f46e5";
   var label=s.getAttribute("data-button-label")||"Chat";
-  var host=location.hostname;
+  var host=(location.hostname||"").trim();
+  var hostQ=host?"&host="+encodeURIComponent(host):"";
   var btn=document.createElement("button");
   btn.type="button";
   btn.setAttribute("aria-label","Open chat");
@@ -104,7 +115,7 @@ function buildWidgetScript(cfg: AppConfig, apiBase: string, widgetOrigin: string
   var iframe=document.createElement("iframe");
   iframe.title="Chat";
   iframe.style.cssText="width:100%;height:100%;border:0";
-  iframe.src=webOrigin+"/embed/"+encodeURIComponent(ws)+"?key="+encodeURIComponent(key)+"&host="+encodeURIComponent(host);
+  iframe.src=webOrigin+"/embed/"+encodeURIComponent(ws)+"?key="+encodeURIComponent(key)+hostQ;
   panel.appendChild(iframe);
   var open=false;
   btn.addEventListener("click",function(){open=!open;panel.style.display=open?"block":"none";});
