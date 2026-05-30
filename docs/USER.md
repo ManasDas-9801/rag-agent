@@ -8,24 +8,20 @@ Related docs: [README](../README.md) · [How it works](../HOW_IT_WORKS.md) · [A
 
 ## Quick start
 
-1. Copy env and start infrastructure (from repo root):
+1. Copy env (from repo root): `cp .env.example .env` (fill in API keys).
+
+2. One-command dev stack:
 
    ```bash
-   cp .env.example .env
-   docker compose up -d postgres redis
-   npm install
-   npm run db:migrate
+   ./rag install    # Windows: rag.cmd install
+   ./rag start
    ```
 
-2. Run three processes (separate terminals):
-
-   ```bash
-   npm run dev -w @rag/api    # http://localhost:4000
-   npm run worker             # required for document ingestion
-   npm run dev -w @rag/web    # http://localhost:3000
-   ```
+   Stops API, worker, web, demo: `./rag stop` (add `--docker` to stop Postgres/Redis too).
 
 3. Open **http://localhost:3000** → **Sign up** → create a **workspace** → upload a file → copy the **embed snippet**.
+
+Manual steps: see [README](../README.md) local dev checklist.
 
 ---
 

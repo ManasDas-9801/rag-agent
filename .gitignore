@@ -13,6 +13,8 @@ out/
 .env.*
 !.env.example
 red.txt
+.cursor/
+Cursor.md
 
 # Logs & debug
 *.log
@@ -24,6 +26,9 @@ pnpm-debug.log*
 # Test & coverage
 coverage/
 .nyc_output/
+
+# RAG CLI runtime state
+.rag/
 
 # Uploads & local data
 uploads/

@@ -14,7 +14,8 @@
     "db:migrate": "npm run db:migrate -w @rag/api",
     "admin:promote": "npm run admin:promote -w @rag/api",
     "db:generate": "npm run db:generate -w @rag/api",
-    "worker": "npm run worker -w @rag/api"
+    "worker": "npm run worker -w @rag/api",
+    "rag": "node rag.mjs"
   },
   "engines": {
     "node": ">=20.10.0"
